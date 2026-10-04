@@ -1,0 +1,179 @@
+import copy
+
+def matrix_input():
+    print("=" * 50)
+    print(" [1] 행렬 입력 ")
+    print("=" * 50)
+
+    n = int(input("정방행렬의 크기 입력 : "))
+
+    mat = []
+    for i in range(n):
+        row = list(map(float, input(f"{i+1}번째 행 입력: ").split()))
+        mat.append(row)
+
+    return n, mat
+
+
+def get_minor(mat, i, j):
+    sub_mat = []
+    for r in range(len(mat)):
+        if r == i:
+            continue
+        new_row = []
+        for c in range(len(mat)):
+            if c != j:
+                new_row.append(mat[r][c])
+        sub_mat.append(new_row)
+    return sub_mat
+
+
+def get_det(mat):
+    n = len(mat)
+    if n == 1:
+        return mat[0][0]
+    if n == 2:
+        return mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0]
+
+    det = 0
+    for j in range(n):
+        sub_mat = get_minor(mat, 0, j)
+        
+        cofactor = ((-1) ** j) * mat[0][j] * get_det(sub_mat)
+        det += cofactor
+    return det
+
+
+def det_inverse(mat):
+    n = len(mat)
+    det = get_det(mat)
+
+    if abs(det) < 1e-9:
+        return None, "행렬식(Determinant)이 0이므로 역행렬이 존재하지 않음"
+
+    if n == 1:
+        return [[1.0 / mat[0][0]]], None
+
+    adj = []
+    for i in range(n):
+        adj_row = []
+        for j in range(n):
+            minor = get_minor(mat, j, i)
+            cofactor = ((-1) ** (i + j)) * get_det(minor)
+            adj_row.append(cofactor)
+        adj.append(adj_row)
+
+    inv_mat = []
+    for i in range(n):
+        inv_row = []
+        for j in range(n):
+            inv_row.append(adj[i][j] / det)
+        inv_mat.append(inv_row)
+
+    return inv_mat, None
+
+
+def gauss_jordan(mat):
+    n = len(mat)
+
+    aug = []
+    for i in range(n):
+        identity_part = [1.0 if i == j else 0.0 for j in range(n)]
+        aug.append(copy.deepcopy(mat[i]) + identity_part)
+
+    for i in range(n):
+        p_row = i
+        for k in range(i + 1, n):
+            if abs(aug[k][i]) > abs(aug[p_row][i]):
+                p_row = k
+        aug[i], aug[p_row] = aug[p_row], aug[i]
+
+        piv = aug[i][i]
+
+        if abs(piv) < 1e-9:
+            return None, "주대각원소가 0으로 역행렬이 존재하지 않음"
+
+        for j in range(2 * n):
+            aug[i][j] /= piv
+
+        for k in range(n):
+            if k != i:
+                factor = aug[k][i]
+                for j in range(2 * n):
+                    aug[k][j] -= factor * aug[i][j]
+
+    inv_mat = []
+    for i in range(n):
+        inv_mat.append(aug[i][n:])
+        
+    return inv_mat, None
+
+
+def format_print(val, tol=1e-9):
+    if abs(val) < tol:
+        return "0"
+    formatted = f"{val:.6f}".rstrip("0").rstrip(".")
+    return formatted
+
+
+def matrix_print(mat):
+    if mat is None:
+        print("  [결과 없음]")
+        return
+    for row in mat:
+        fmt_row = [f"{format_print(val):>10}" for val in row]
+        print("  [" + " ".join(fmt_row) + " ]")
+
+
+def matrix_cmp(m1, m2, tol=1e-6):
+    if m1 is None or m2 is None:
+        return False
+    n = len(m1)
+    for i in range(n):
+        for j in range(n):
+            if abs(m1[i][j] - m2[i][j]) > tol:
+                return False
+    return True
+
+
+def main():
+    n, mat = matrix_input()
+
+    print("\n" + "=" * 50)
+    print(" [원본 행렬] ")
+    print("=" * 50)
+    matrix_print(mat)
+
+    inv_det, err = det_inverse(mat)
+    print("\n" + "=" * 50)
+    print(" [2] 행렬식 ")
+    print("=" * 50)
+    if err:
+        print(f"오류: {err}")
+    else:
+        matrix_print(inv_det)
+
+    inv_gj, err_gj = gauss_jordan(mat)
+    print("\n" + "=" * 50)
+    print(" [3] 가우스 조던 소거법 ")
+    print("=" * 50)
+    if err_gj:
+        print(f"오류: {err_gj}")
+    else:
+        matrix_print(inv_gj)
+
+    print("\n" + "=" * 50)
+    print(" [4] 결과 비교")
+    print("=" * 50)
+    if inv_det is None or inv_gj is None:
+        print("모두 역행렬이 존재하지 않음")
+    else:
+        is_same = matrix_cmp(inv_det, inv_gj)
+        if is_same:
+            print("결과: 역행렬이 일치함")
+        else:
+            print("결과: 역행렬이 일치하지 않음")
+
+
+if __name__ == "__main__":
+    main()
